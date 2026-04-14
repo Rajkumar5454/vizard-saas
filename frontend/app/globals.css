@@ -1,0 +1,51 @@
+@import "tailwindcss";
+/* Custom utility animations */
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float-slow 10s ease-in-out infinite;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(-4deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(-6deg);
+  }
+}
+
+@keyframes float-slow {
+  0% {
+    transform: translateY(0px) rotate(3deg);
+  }
+  50% {
+    transform: translateY(-30px) rotate(1deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(3deg);
+  }
+}
+
+/* Theme variables (do not force body colors here — Tailwind classes control theme)
+   Put global variables here for components to consume when needed. */
+:root {
+  --cw-background: #0f1724; /* dark fallback */
+  --cw-foreground: #e6edf3;
+}
+
+/* Keep global styles minimal — layout.tsx applies the Tailwind body classes */
+html, body {
+  height: 100%;
+}
+
+/* Selection color used across the app */
+::selection {
+  background-color: rgba(99, 102, 241, 0.25); /* purple-500/25 */
+}
