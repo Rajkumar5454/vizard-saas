@@ -49,7 +49,13 @@ def _execute_video_pipeline(video_id: int):
         return f"Started processing {len(clips_ideas)} clips"
         
     except Exception as e:
-        print(f"Error processing video {video_id}: {e}")
+        import traceback
+        err = traceback.format_exc()
+        print(f"Error processing video {video_id}: {err}")
+        import os
+        os.makedirs("uploads", exist_ok=True)
+        with open("uploads/error.log", "a") as f:
+            f.write(f"\n--- PIPELINE ERROR ---\n{err}\n")
         video.status = "failed"
         db.commit()
     finally:
@@ -182,6 +188,11 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
         import traceback
         err = traceback.format_exc()
         print(f"yt-dlp error: {err}")
+        # Write to error.log so we can debug via browser
+        import os
+        os.makedirs("uploads", exist_ok=True)
+        with open("uploads/error.log", "a") as f:
+            f.write(f"\n--- DOWNLOAD ERROR ---\n{err}\n")
         video.status = "failed"
         db.commit()
         db.close()
