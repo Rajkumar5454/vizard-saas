@@ -142,42 +142,52 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
         video.status = "downloading"
         db.commit()
 
+        # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
         ydl_opts = {
-            'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'merge_output_format': 'mp4',
-            'outtmpl': video.original_url,
+            'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
             'quiet': True,
             'no_warnings': True,
-            'retries': 10,
-            'fragment_retries': 10
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # extract_info with download=True does both and gives us the exact metadata
-            info_dict = ydl.extract_info(yt_url, download=True)
+            info = ydl.extract_info(yt_url, download=False)
+        
+        # Find a single-file stream URL (video+audio combined) to avoid costly merging
+        stream_url = None
+        formats = info.get('formats', [])
+        
+        # Prefer combined mp4 format (no merging needed)
+        for fmt in reversed(formats):
+            if (fmt.get('ext') == 'mp4' and 
+                fmt.get('vcodec', 'none') != 'none' and 
+                fmt.get('acodec', 'none') != 'none' and
+                fmt.get('height', 0) and fmt.get('height', 0) <= 720):
+                stream_url = fmt.get('url')
+                break
+        
+        # Fallback: use any available URL
+        if not stream_url:
+            stream_url = info.get('url')
+        if not stream_url and formats:
+            stream_url = formats[-1].get('url')
             
-            # ydl.prepare_filename gives us the exact filepath it saved to
-            actual_filename = ydl.prepare_filename(info_dict)
-            
-            # Since sometimes prepare_filename adds an extra .ext but the actual merge was different,
-            # we can just glob or use the actual_filename
-            video.original_url = actual_filename
-            
-            # Upload downloaded YouTube video to Cloud Storage
-            filename = os.path.basename(video.original_url)
-            final_url = upload_file(video.original_url, filename)
-            if final_url != video.original_url:
-                delete_local_file(video.original_url)
-                video.original_url = final_url
-            
+        if not stream_url:
+            raise Exception("Could not get stream URL from YouTube")
+        
+        # Store the direct CDN URL — ffmpeg can stream from URLs directly
+        video.original_url = stream_url
         video.status = "processing"
         db.commit()
+
     except Exception as e:
-        print(f"yt-dlp error: {e}")
+        import traceback
+        err = traceback.format_exc()
+        print(f"yt-dlp error: {err}")
         video.status = "failed"
         db.commit()
         db.close()
-        return "Download failed"
+        return f"Download failed: {e}"
     finally:
         db.close()
         
     return _execute_video_pipeline(video_id)
+
