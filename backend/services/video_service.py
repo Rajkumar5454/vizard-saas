@@ -42,10 +42,10 @@ def extract_audio(video_path: str) -> str:
 
 def cut_and_crop_segment(video_path: str, start_time: float, end_time: float, output_path: str):
     duration = end_time - start_time
-    env = os.getenv("ENVIRONMENT", "development")
     
-    # Use macOS hardware acceleration locally, but fallback to libx264 in Linux/cloud
-    video_codec = "h264_videotoolbox" if env == "development" else "libx264"
+    # IMPORTANT: h264_videotoolbox is macOS ONLY. Always use libx264 on Linux/Render.
+    import platform
+    video_codec = "h264_videotoolbox" if platform.system() == "Darwin" else "libx264"
     
     command = ["ffmpeg", "-y"]
     if _is_url(video_path):
@@ -56,7 +56,8 @@ def cut_and_crop_segment(video_path: str, start_time: float, end_time: float, ou
         "-t", str(duration),
         "-vf", "crop=ih*9/16:ih,scale=1080:1920",
         "-c:v", video_codec,
-        "-b:v", "2000k",
+        "-preset", "ultrafast",
+        "-b:v", "1500k",
         "-c:a", "aac",
         "-b:a", "128k",
         output_path
