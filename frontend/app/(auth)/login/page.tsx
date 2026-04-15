@@ -15,9 +15,22 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-          try {
-            await fetch(`${cleanAPI}/videos/youtube`, {
-              method: 'POST',
+    try {
+      const res = await fetch(`${cleanAPI}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ username: email, password: password })
+      });
+      if (!res.ok) throw new Error("Invalid credentials");
+      const data = await res.json();
+      localStorage.setItem('token', data.access_token);
+      
+      const pendingUrl = localStorage.getItem('pendingYoutubeUrl');
+      if (pendingUrl) {
+         localStorage.removeItem('pendingYoutubeUrl');
+         try {
+           await fetch(`${cleanAPI}/videos/youtube`, {
+             method: 'POST',
              headers: {
                'Content-Type': 'application/json',
                'Authorization': `Bearer ${data.access_token}`
