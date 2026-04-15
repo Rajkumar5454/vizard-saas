@@ -72,6 +72,30 @@ def get_user_videos(current_user: models.User = Depends(auth.get_current_user), 
     videos = db.query(models.Video).filter(models.Video.user_id == current_user.id).order_by(models.Video.created_at.desc()).all()
     return videos
 
+@router.get("/debug/test-yt")
+def test_yt_dlp(url: str):
+    """Debug endpoint to test if yt-dlp can download from this server"""
+    import yt_dlp, subprocess, traceback
+    results = {}
+    
+    # Test 1: Check if ffmpeg is available
+    try:
+        r = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True)
+        results["ffmpeg"] = "OK: " + r.stdout.split("\n")[0]
+    except Exception as e:
+        results["ffmpeg"] = f"MISSING: {e}"
+    
+    # Test 2: Try yt-dlp extract_info (no download)
+    try:
+        ydl_opts = {'quiet': True, 'no_warnings': True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            results["yt_dlp"] = f"OK: Found video '{info.get('title')}' duration={info.get('duration')}s"
+    except Exception as e:
+        results["yt_dlp"] = f"FAILED: {traceback.format_exc()}"
+    
+    return results
+
 @router.get("/{video_id}", response_model=schemas.VideoResponse)
 def get_video_status(video_id: int, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     video = db.query(models.Video).filter(models.Video.id == video_id, models.Video.user_id == current_user.id).first()
