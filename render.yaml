@@ -3,58 +3,16 @@ services:
   - type: web
     name: vizard-api
     env: python
-    buildCommand: "cd backend && pip install -r requirements.txt"
+    buildCommand: "cd backend && pip install -r requirements.txt && apt-get update && apt-get install -y ffmpeg"
     startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: vizard-db
           property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: vizard-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: redis
-          name: vizard-redis
-          property: connectionString
       - key: ENVIRONMENT
         value: production
       # S3 Configuration that you will fill in Render Dashboard
-      - key: S3_ACCESS_KEY
-        sync: false
-      - key: S3_SECRET_KEY
-        sync: false
-      - key: S3_BUCKET_NAME
-        sync: false
-      - key: S3_ENDPOINT_URL
-        sync: false
-
-  # Celery Background Worker
-  - type: worker
-    name: vizard-celery
-    env: python
-    buildCommand: "cd backend && pip install -r requirements.txt && apt-get update && apt-get install -y ffmpeg"
-    startCommand: "cd backend && celery -A worker.celery_app worker --loglevel=info"
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: vizard-db
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: vizard-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: redis
-          name: vizard-redis
-          property: connectionString
-      - key: ENVIRONMENT
-        value: production
       - key: S3_ACCESS_KEY
         sync: false
       - key: S3_SECRET_KEY
@@ -69,6 +27,3 @@ databases:
     databaseName: vizard
     user: admin
     plan: free
-
-# Using Render's built-in Redis block (requires Render account add-on, or you can use Upstash)
-# If Render complains about Redis, you might need to create it manually in the dashboard.
