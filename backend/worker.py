@@ -1,8 +1,7 @@
 import os
-# Fix for macOS fork safety issues with Celery/Python
+# Fix for macOS fork safety issues
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
-from celery import Celery, group
 from dotenv import load_dotenv
 load_dotenv(override=True)
 
@@ -11,15 +10,6 @@ from database import SessionLocal
 import models
 from services import video_service, ai_service
 from services.storage_service import upload_file, delete_local_file
-
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
-
-celery_app = Celery(
-    "vizard_worker",
-    broker=CELERY_BROKER_URL,
-    backend=CELERY_RESULT_BACKEND
-)
 
 def _execute_video_pipeline(video_id: int):
     # Get DB session
@@ -51,7 +41,7 @@ def _execute_video_pipeline(video_id: int):
 
         # 4. Generate clips sequentially to avoid race conditions with the UI
         for idea in clips_ideas:
-            generate_clip_task(video_id, video.original_url, idea.model_dump())
+            generate_clip_task_sync(video_id, video.original_url, idea.model_dump())
             
         video.status = "completed"
         db.commit()
@@ -65,8 +55,7 @@ def _execute_video_pipeline(video_id: int):
     finally:
         db.close()
 
-@celery_app.task(name="generate_clip_task")
-def generate_clip_task(video_id: int, original_url: str, idea_dict: dict):
+def generate_clip_task_sync(video_id: int, original_url: str, idea_dict: dict):
     db = SessionLocal()
     try:
         # Reconstruct idea from dict
@@ -129,12 +118,10 @@ def generate_clip_task(video_id: int, original_url: str, idea_dict: dict):
     finally:
         db.close()
 
-@celery_app.task(name="process_video_task")
-def process_video_task(video_id: int):
+def process_video_task_sync(video_id: int):
     return _execute_video_pipeline(video_id)
 
-@celery_app.task(name="process_youtube_video_task")
-def process_youtube_video_task(video_id: int, yt_url: str):
+def process_youtube_video_task_sync(video_id: int, yt_url: str):
     import yt_dlp
     db = SessionLocal()
     video = db.query(models.Video).filter(models.Video.id == video_id).first()

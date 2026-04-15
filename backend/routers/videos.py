@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 import os
@@ -7,7 +7,7 @@ import shutil
 
 import models, schemas, auth
 from database import get_db
-from worker import process_video_task, process_youtube_video_task
+from worker import process_video_task_sync, process_youtube_video_task_sync
 from services.storage_service import upload_file, delete_local_file
 
 router = APIRouter(
@@ -20,6 +20,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload", response_model=schemas.VideoResponse)
 async def upload_video(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...), 
     current_user: models.User = Depends(auth.get_current_user), 
     db: Session = Depends(get_db)
@@ -57,8 +58,8 @@ async def upload_video(
         db.commit()
         db.refresh(new_video)
         
-        # Trigger Celery Task
-        process_video_task.delay(new_video.id)
+        # Trigger Background Task
+        background_tasks.add_task(process_video_task_sync, new_video.id)
         
         return new_video
         
@@ -81,6 +82,7 @@ def get_video_status(video_id: int, current_user: models.User = Depends(auth.get
 @router.post("/youtube", response_model=schemas.VideoResponse)
 def process_youtube_video(
     req: schemas.YoutubeUrlRequest,
+    background_tasks: BackgroundTasks,
     current_user: models.User = Depends(auth.get_current_user), 
     db: Session = Depends(get_db)
 ):
@@ -105,7 +107,7 @@ def process_youtube_video(
         db.commit()
         db.refresh(new_video)
         
-        process_youtube_video_task.delay(new_video.id, req.url)
+        background_tasks.add_task(process_youtube_video_task_sync, new_video.id, req.url)
         
         return new_video
         
