@@ -29,7 +29,8 @@ export default function Dashboard() {
       const token = localStorage.getItem('token');
       try {
         const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${API}/videos`, {
+        const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
+        const res = await fetch(`${cleanAPI}/videos`, {
           headers: { 'Authorization': `Bearer ${token}` },
           cache: 'no-store'
         });
@@ -118,12 +119,23 @@ export default function Dashboard() {
                     {video.clips.map(clip => (
                       <div key={clip.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-700 group hover:border-purple-500 flex flex-col transition duration-300 shadow-lg hover:shadow-purple-500/20 transform hover:-translate-y-1">
                         <div className="aspect-[9/16] bg-black relative flex items-center justify-center border-b border-gray-800">
-                          <video 
-                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/${clip.clip_url}`} 
-                            controls 
-                            className="w-full h-full object-cover"
-                            poster={clip.thumbnail_url ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/${clip.thumbnail_url}` : "/placeholder-video.png"}
-                          />
+                          {(() => {
+                            const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+                            const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
+                            const getFullUrl = (path: string) => {
+                              if (!path) return '';
+                              if (path.startsWith('http')) return path;
+                              return `${cleanAPI}/${path.startsWith('/') ? path.slice(1) : path}`;
+                            };
+                            return (
+                              <video 
+                                src={getFullUrl(clip.clip_url)} 
+                                controls 
+                                className="w-full h-full object-cover"
+                                poster={clip.thumbnail_url ? getFullUrl(clip.thumbnail_url) : "/placeholder-video.png"}
+                              />
+                            );
+                          })()}
                         </div>
                         <div className="p-5 flex-1 flex flex-col justify-between">
                           <p className="font-bold text-md text-white mb-3 line-clamp-2 leading-snug" title={clip.title}>{clip.title}</p>
@@ -133,7 +145,7 @@ export default function Dashboard() {
                               <span className="text-xs text-gray-300 font-medium">{Math.round(clip.duration)} seconds</span>
                             </div>
                             <a 
-                              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/videos/download/${clip.id}`}
+                              href={`${cleanAPI}/videos/download/${clip.id}`}
                               download
                               target="_blank"
                               rel="noopener noreferrer"

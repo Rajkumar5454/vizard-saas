@@ -7,6 +7,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -35,7 +36,7 @@ export default function PricingPage() {
     }
 
     try {
-      const res = await fetch(`${API}/payments/create-order?amount=${amount}`, {
+      const res = await fetch(`${cleanAPI}/payments/create-order?amount=${amount}`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -52,7 +53,7 @@ export default function PricingPage() {
         order_id: orderData.id,
         handler: async function (response: any) {
           try {
-            const verifyRes = await fetch(`${API}/payments/verify`, {
+            const verifyRes = await fetch(`${cleanAPI}/payments/verify`, {
               method: 'POST',
               headers: { 
                 'Content-Type': 'application/json',

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 
 export default function UploadPage() {
   const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'upload' | 'youtube'>('upload');
@@ -61,7 +62,7 @@ export default function UploadPage() {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API}/videos/upload`, {
+      const res = await fetch(`${cleanAPI}/videos/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -89,7 +90,7 @@ export default function UploadPage() {
 
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API}/videos/youtube`, {
+      const res = await fetch(`${cleanAPI}/videos/youtube`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

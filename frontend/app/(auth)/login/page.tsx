@@ -13,8 +13,9 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const res = await fetch(`${API}/users/login`, {
+      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
+      const res = await fetch(`${cleanAPI}/users/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({ username: email, password: password })
@@ -46,8 +47,9 @@ export default function Login() {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const res = await fetch(`${API}/users/google`, {
+      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
+      const res = await fetch(`${cleanAPI}/users/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: credentialResponse.credential })

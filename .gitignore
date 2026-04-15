@@ -18,13 +18,11 @@ celerybeat-schedule
 __pycache__/
 *.pyc
 
-# User Uploads / Media
+# User Uploads / Media (only ignore backend upload folder, NOT frontend public images)
 backend/uploads/
 uploads/
 *.mp4
 *.m4a
-*.jpg
-*.png
 
 # OS / IDE
 .DS_Store
