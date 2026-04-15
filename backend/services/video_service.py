@@ -15,7 +15,7 @@ def extract_audio(video_path: str) -> str:
     audio_path = f"/tmp/{uuid.uuid4()}.mp3"
     command = [
         "ffmpeg", "-i", video_path,
-        "-q:a", "0", "-map", "a",
+        "-vn", "-ar", "16000", "-ac", "1", "-b:a", "32k",
         audio_path, "-y"
     ]
     subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
