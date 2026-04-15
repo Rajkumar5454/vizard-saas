@@ -18,7 +18,8 @@ export default function Navbar() {
         return;
       }
       try {
-        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const API_RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const API = API_RAW.endsWith('/') ? API_RAW.slice(0, -1) : API_RAW;
         const res = await fetch(`${API}/users/me`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
