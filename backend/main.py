@@ -23,7 +23,11 @@ async def log_requests(request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Allow all for local dev to avoid CORS-at-localhost issues
+    allow_origins=[
+        "https://contentwala.xyz",
+        "https://vizard-saas.vercel.app",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
