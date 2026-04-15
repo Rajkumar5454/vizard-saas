@@ -69,3 +69,28 @@ def google_login(req: schemas.GoogleLoginRequest, db: Session = Depends(get_db))
         return {"access_token": access_token, "token_type": "bearer"}
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+
+# ============================================================
+# ADMIN ENDPOINT - Add credits to any user by email
+# Protected by a secret key stored in environment variables
+# ============================================================
+@router.post("/admin/add-credits")
+def admin_add_credits(
+    email: str,
+    credits: int,
+    secret: str,
+    db: Session = Depends(get_db)
+):
+    admin_secret = os.getenv("ADMIN_SECRET", "vizard-admin-2026")
+    if secret != admin_secret:
+        raise HTTPException(status_code=403, detail="Invalid admin secret")
+    
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.credits += credits
+    db.commit()
+    db.refresh(user)
+    return {"message": f"Added {credits} credits to {email}", "new_total": user.credits}
+
