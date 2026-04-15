@@ -112,6 +112,7 @@ def test_yt_dlp(url: str):
         results["yt_dlp"] = f"FAILED: {traceback.format_exc()}"
     
     # Test 3: Try extracting audio from stream URL
+    audio_path = None
     if stream_url:
         try:
             audio_path = video_service.extract_audio(stream_url)
@@ -120,6 +121,20 @@ def test_yt_dlp(url: str):
             results["audio_extract"] = f"FAILED: {str(e)}"
     else:
         results["audio_extract"] = "SKIPPED: no stream URL"
+    
+    # Test 4: Try Groq transcription
+    if audio_path:
+        try:
+            from services import ai_service
+            transcript = ai_service.transcribe_audio(audio_path)
+            if transcript:
+                results["groq_transcribe"] = f"OK: Got {len(transcript)} chars of transcript"
+            else:
+                results["groq_transcribe"] = "FAILED: Empty transcript returned (Groq API key may be wrong or audio silent)"
+        except Exception as e:
+            results["groq_transcribe"] = f"FAILED: {str(e)}"
+    else:
+        results["groq_transcribe"] = "SKIPPED: no audio"
     
     return results
 
