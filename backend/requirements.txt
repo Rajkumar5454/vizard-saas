@@ -13,7 +13,7 @@ redis
 python-dotenv
 pydantic-settings
 alembic
-yt-dlp
+yt-dlp==2024.12.13
 groq
 google-auth
 email-validator
