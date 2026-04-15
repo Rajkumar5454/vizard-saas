@@ -23,13 +23,14 @@ export default function Dashboard() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const API_RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const cleanAPI = API_RAW.endsWith('/') ? API_RAW.slice(0, -1) : API_RAW;
 
   useEffect(() => {
     const fetchVideos = async () => {
       const token = localStorage.getItem('token');
       try {
-        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
         const res = await fetch(`${cleanAPI}/videos`, {
           headers: { 'Authorization': `Bearer ${token}` },
           cache: 'no-store'
@@ -120,8 +121,6 @@ export default function Dashboard() {
                       <div key={clip.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-700 group hover:border-purple-500 flex flex-col transition duration-300 shadow-lg hover:shadow-purple-500/20 transform hover:-translate-y-1">
                         <div className="aspect-[9/16] bg-black relative flex items-center justify-center border-b border-gray-800">
                           {(() => {
-                            const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-                            const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
                             const getFullUrl = (path: string) => {
                               if (!path) return '';
                               if (path.startsWith('http')) return path;

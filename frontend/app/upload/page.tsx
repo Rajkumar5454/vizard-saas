@@ -3,8 +3,8 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function UploadPage() {
-  const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
+  const API_RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const cleanAPI = API_RAW.endsWith('/') ? API_RAW.slice(0, -1) : API_RAW;
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [activeTab, setActiveTab] = useState<'upload' | 'youtube'>('upload');

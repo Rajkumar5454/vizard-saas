@@ -10,26 +10,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const router = useRouter();
 
+  const API_RAW = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const cleanAPI = API_RAW.endsWith('/') ? API_RAW.slice(0, -1) : API_RAW;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
-      const res = await fetch(`${cleanAPI}/users/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({ username: email, password: password })
-      });
-      if (!res.ok) throw new Error("Invalid credentials");
-      const data = await res.json();
-      localStorage.setItem('token', data.access_token);
-      
-      const pendingUrl = localStorage.getItem('pendingYoutubeUrl');
-      if (pendingUrl) {
-         localStorage.removeItem('pendingYoutubeUrl');
-         try {
-           await fetch(`${API}/videos/youtube`, {
-             method: 'POST',
+          try {
+            await fetch(`${cleanAPI}/videos/youtube`, {
+              method: 'POST',
              headers: {
                'Content-Type': 'application/json',
                'Authorization': `Bearer ${data.access_token}`
@@ -47,8 +35,6 @@ export default function Login() {
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
       const res = await fetch(`${cleanAPI}/users/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,7 +48,7 @@ export default function Login() {
       if (pendingUrl) {
          localStorage.removeItem('pendingYoutubeUrl');
          try {
-           await fetch(`${API}/videos/youtube`, {
+           await fetch(`${cleanAPI}/videos/youtube`, {
              method: 'POST',
              headers: {
                'Content-Type': 'application/json',
