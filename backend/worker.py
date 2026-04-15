@@ -115,7 +115,14 @@ def generate_clip_task_sync(video_id: int, original_url: str, idea_dict: dict):
         db.commit()
         return f"Clip {idea.title} generated"
     except Exception as e:
-        print(f"Error in generate_clip_task for {idea_dict.get('title')}: {e}")
+        import traceback
+        err_msg = traceback.format_exc()
+        print(f"Error in generate_clip_task for {idea_dict.get('title')}: {err_msg}")
+        
+        # Write error to a public file so we can debug from the frontend
+        with open("uploads/error.log", "a") as f:
+            f.write(f"\n--- ERROR ---\n{err_msg}\n")
+            
         return str(e)
     finally:
         db.close()
@@ -145,14 +152,22 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
             'fragment_retries': 10
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([yt_url])
+            # extract_info with download=True does both and gives us the exact metadata
+            info_dict = ydl.extract_info(yt_url, download=True)
             
-        # Upload downloaded YouTube video to Cloud Storage
-        filename = os.path.basename(video.original_url)
-        final_url = upload_file(video.original_url, filename)
-        if final_url != video.original_url:
-            delete_local_file(video.original_url)
-            video.original_url = final_url
+            # ydl.prepare_filename gives us the exact filepath it saved to
+            actual_filename = ydl.prepare_filename(info_dict)
+            
+            # Since sometimes prepare_filename adds an extra .ext but the actual merge was different,
+            # we can just glob or use the actual_filename
+            video.original_url = actual_filename
+            
+            # Upload downloaded YouTube video to Cloud Storage
+            filename = os.path.basename(video.original_url)
+            final_url = upload_file(video.original_url, filename)
+            if final_url != video.original_url:
+                delete_local_file(video.original_url)
+                video.original_url = final_url
             
         video.status = "processing"
         db.commit()
