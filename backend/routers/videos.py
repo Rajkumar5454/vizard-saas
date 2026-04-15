@@ -93,9 +93,22 @@ def test_yt_dlp(url: str):
             'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
             'quiet': True, 'no_warnings': True,
             'extractor_args': {
-                'youtube': ['player_client=android,ios']
-            }
+                'youtube': {
+                    'player_client': ['web_embedded', 'android', 'ios'],
+                    'player_skip': ['web']
+                }
+            },
+            'nocheckcertificate': True,
         }
+        
+        # Support cookies in debug test as well
+        yt_cookies = os.getenv("YOUTUBE_COOKIES")
+        if yt_cookies:
+            cookie_path = "/tmp/youtube_cookies_test.txt"
+            with open(cookie_path, "w") as f:
+                f.write(yt_cookies)
+            ydl_opts['cookiefile'] = cookie_path
+            
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         

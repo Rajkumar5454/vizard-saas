@@ -149,14 +149,30 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
         db.commit()
 
         # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
+        # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
         ydl_opts = {
             'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
             'quiet': True,
             'no_warnings': True,
             'extractor_args': {
-                'youtube': ['player_client=android,ios']
-            }
+                'youtube': {
+                    'player_client': ['web_embedded', 'android', 'ios'],
+                    'player_skip': ['web']
+                }
+            },
+            'nocheckcertificate': True,
         }
+        
+        # FINAL WEAPON: If the user provides cookies via env var, use them.
+        # This is the only 100% guaranteed way to bypass "Sign in to confirm you are not a bot"
+        cookie_path = None
+        yt_cookies = os.getenv("YOUTUBE_COOKIES")
+        if yt_cookies:
+            cookie_path = "/tmp/youtube_cookies.txt"
+            with open(cookie_path, "w") as f:
+                f.write(yt_cookies)
+            ydl_opts['cookiefile'] = cookie_path
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(yt_url, download=False)
         
