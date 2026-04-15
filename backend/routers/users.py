@@ -74,7 +74,7 @@ def google_login(req: schemas.GoogleLoginRequest, db: Session = Depends(get_db))
 # ADMIN ENDPOINT - Add credits to any user by email
 # Protected by a secret key stored in environment variables
 # ============================================================
-@router.post("/admin/add-credits")
+@router.get("/admin/add-credits")
 def admin_add_credits(
     email: str,
     credits: int,
