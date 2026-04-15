@@ -75,7 +75,8 @@ def get_user_videos(current_user: models.User = Depends(auth.get_current_user), 
 @router.get("/debug/test-yt")
 def test_yt_dlp(url: str):
     """Debug endpoint to test if yt-dlp can download from this server"""
-    import yt_dlp, subprocess, traceback
+    import yt_dlp, subprocess, traceback, uuid
+    from services import video_service
     results = {}
     
     # Test 1: Check if ffmpeg is available
@@ -85,14 +86,40 @@ def test_yt_dlp(url: str):
     except Exception as e:
         results["ffmpeg"] = f"MISSING: {e}"
     
-    # Test 2: Try yt-dlp extract_info (no download)
+    # Test 2: Try yt-dlp extract_info (no download) and get stream URL
+    stream_url = None
     try:
-        ydl_opts = {'quiet': True, 'no_warnings': True}
+        ydl_opts = {
+            'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
+            'quiet': True, 'no_warnings': True
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            results["yt_dlp"] = f"OK: Found video '{info.get('title')}' duration={info.get('duration')}s"
+        
+        formats = info.get('formats', [])
+        for fmt in reversed(formats):
+            if (fmt.get('ext') == 'mp4' and 
+                fmt.get('vcodec', 'none') != 'none' and 
+                fmt.get('acodec', 'none') != 'none' and
+                fmt.get('height', 0) and fmt.get('height', 0) <= 720):
+                stream_url = fmt.get('url')
+                break
+        if not stream_url:
+            stream_url = info.get('url') or (formats[-1].get('url') if formats else None)
+        
+        results["yt_dlp"] = f"OK: Found video '{info.get('title')}' duration={info.get('duration')}s stream_url={'found' if stream_url else 'NOT FOUND'}"
     except Exception as e:
         results["yt_dlp"] = f"FAILED: {traceback.format_exc()}"
+    
+    # Test 3: Try extracting audio from stream URL
+    if stream_url:
+        try:
+            audio_path = video_service.extract_audio(stream_url)
+            results["audio_extract"] = f"OK: audio saved to {audio_path}"
+        except Exception as e:
+            results["audio_extract"] = f"FAILED: {str(e)}"
+    else:
+        results["audio_extract"] = "SKIPPED: no stream URL"
     
     return results
 
