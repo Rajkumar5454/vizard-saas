@@ -67,7 +67,9 @@ def generate_clip_task_sync(video_id: int, original_url: str, idea_dict: dict):
             idea.end_time = idea.start_time + 15.0
             idea.duration = 15.0
             
-        output_filename = f"{video_id}_{idea.title.replace(' ', '_')}.mp4"
+        import re
+        safe_title = re.sub(r'[^a-zA-Z0-9_\-]', '', idea.title.replace(' ', '_'))
+        output_filename = f"{video_id}_{safe_title}.mp4"
         output_dir = "uploads"
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, output_filename)
@@ -81,7 +83,7 @@ def generate_clip_task_sync(video_id: int, original_url: str, idea_dict: dict):
         )
         
         # Generate thumbnail
-        thumb_filename = f"{video_id}_{idea.title.replace(' ', '_')}_thumb.jpg"
+        thumb_filename = f"{video_id}_{safe_title}_thumb.jpg"
         thumb_path = os.path.join(output_dir, thumb_filename)
         try:
             video_service.generate_thumbnail(output_path, thumb_path)
