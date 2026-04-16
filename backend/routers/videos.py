@@ -92,7 +92,6 @@ def test_yt_dlp(url: str):
         ydl_opts = {
             'format': 'best',
             'quiet': True, 'no_warnings': True,
-            'impersonate': 'chrome',
             'extractor_args': {
                 'youtube': {
                     'player_client': ['tvhtml5', 'android', 'ios'],
@@ -103,13 +102,16 @@ def test_yt_dlp(url: str):
         }
         
         # Support cookies in debug test as well
-        cookie_path = "/tmp/youtube_cookies_test.txt"
-        yt_cookies = os.getenv("YOUTUBE_COOKIES")
-        
-        if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
-            with open(cookie_path, "w") as f:
-                f.write(yt_cookies)
-            ydl_opts['cookiefile'] = cookie_path
+        persistent_cookie_path = "youtube_cookies.txt"
+        if os.path.exists(persistent_cookie_path):
+            ydl_opts['cookiefile'] = persistent_cookie_path
+        else:
+            cookie_path = "/tmp/youtube_cookies_test.txt"
+            yt_cookies = os.getenv("YOUTUBE_COOKIES")
+            if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
+                with open(cookie_path, "w") as f:
+                    f.write(yt_cookies)
+                ydl_opts['cookiefile'] = cookie_path
             
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -218,4 +220,22 @@ async def download_clip(clip_id: int, db: Session = Depends(get_db)):
         filename=os.path.basename(clip.clip_url),
         media_type='video/mp4'
     )
+
+@router.post("/admin/upload-cookies")
+async def upload_youtube_cookies(file: UploadFile = File(...)):
+    """Secret endpoint to update youtube cookies on the server natively without redeploying"""
+    try:
+        content = await file.read()
+        text_content = content.decode('utf-8')
+        if "# Netscape HTTP Cookie File" not in text_content:
+            text_content = text_content.replace("\\n", "\n") # Attempt fallback unflattening
+            if "# Netscape" not in text_content:
+                raise HTTPException(status_code=400, detail="Invalid cookie file format. Must be Netscape format.")
+            
+        with open("youtube_cookies.txt", "w") as f:
+            f.write(text_content)
+            
+        return {"status": "success", "message": "Cookies updated natively on the server"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 

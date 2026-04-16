@@ -155,7 +155,6 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
             'format': 'best',
             'quiet': True,
             'no_warnings': True,
-            'impersonate': 'chrome',
             'extractor_args': {
                 'youtube': {
                     'player_client': ['tvhtml5', 'android', 'ios'],
@@ -165,14 +164,18 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
             'nocheckcertificate': True,
         }
         
-        # Provide an option for the user to pass fresh cookies via env var if TLS impersonation fails
-        cookie_path = "/tmp/youtube_cookies.txt"
-        yt_cookies = os.getenv("YOUTUBE_COOKIES")
-        
-        if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
-            with open(cookie_path, "w") as f:
-                f.write(yt_cookies)
-            ydl_opts['cookiefile'] = cookie_path
+        # Load cookies from persistent file if uploaded via admin endpoint
+        persistent_cookie_path = "youtube_cookies.txt"
+        if os.path.exists(persistent_cookie_path):
+            ydl_opts['cookiefile'] = persistent_cookie_path
+        else:
+            # Fallback to env var if available (though formatting breaks often)
+            yt_cookies = os.getenv("YOUTUBE_COOKIES")
+            if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
+                temp_cookie_path = "/tmp/youtube_cookies.txt"
+                with open(temp_cookie_path, "w") as f:
+                    f.write(yt_cookies)
+                ydl_opts['cookiefile'] = temp_cookie_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(yt_url, download=False)
