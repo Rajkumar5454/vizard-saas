@@ -14,6 +14,7 @@ python-dotenv
 pydantic-settings
 alembic
 yt-dlp==2024.12.13
+curl_cffi
 groq
 google-auth
 email-validator

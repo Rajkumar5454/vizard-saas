@@ -155,6 +155,7 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
             'format': 'best',
             'quiet': True,
             'no_warnings': True,
+            'impersonate': 'chrome110',
             'extractor_args': {
                 'youtube': {
                     'player_client': ['tvhtml5', 'android', 'ios'],
@@ -164,45 +165,14 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
             'nocheckcertificate': True,
         }
         
-        # FINAL WEAPON: If the user provides cookies via env var, use them.
+        # Provide an option for the user to pass fresh cookies via env var if TLS impersonation fails
         cookie_path = "/tmp/youtube_cookies.txt"
         yt_cookies = os.getenv("YOUTUBE_COOKIES")
         
-        # Hardcoded fallback from the user's provided cookies in case Render mangles the multiline env var
-        fallback_cookies = """# Netscape HTTP Cookie File
-# https://curl.haxx.se/rfc/cookie_spec.html
-# This is a generated file! Do not edit.
-
-.youtube.com	TRUE	/	TRUE	1810867273	PREF	f7=4100&tz=Asia.Calcutta&f4=4000000&f5=20000
-.youtube.com	TRUE	/	FALSE	1810702130	HSID	A-MJPlj0XkzR8elao
-.youtube.com	TRUE	/	TRUE	1810702130	SSID	ADMwzCUpM60zZPoGn
-.youtube.com	TRUE	/	FALSE	1810702130	APISID	SWx9IVEJNsr2i1Sp/AIab99c7mqKFBUdXa
-.youtube.com	TRUE	/	TRUE	1810702130	SAPISID	5f1McSTlL3MLOpeZ/ABtExFC7uTr_um7LC
-.youtube.com	TRUE	/	TRUE	1810702130	__Secure-1PAPISID	5f1McSTlL3MLOpeZ/ABtExFC7uTr_um7LC
-.youtube.com	TRUE	/	TRUE	1810702130	__Secure-3PAPISID	5f1McSTlL3MLOpeZ/ABtExFC7uTr_um7LC
-.youtube.com	TRUE	/	TRUE	1804004021	LOGIN_INFO	AFmmF2swRQIgKa1uVgscKNScRhrVLPQZOn6rKAu4XgoDPs7txShKCNICIQDJpXKvmN9kD76cYJ2GDLVrtkhuNljCPX4yF4fKO4JPWQ:QUQ3MjNmemtkb2gwMkd4b1VoTV9nZUJrM0lUcUtzRW9WempubjBOQXhvb2I1TEFvai1qTm5aS1Qxc0I4WDBWLVMzUEdmaGRmRzVjbEhoQWROMzYtU2hKZmcyLXBVS1JndmdLVjBCSGhKUWJfUHptWWRIMDhETHdRTUtDRHJzZFdaWGZoQmVwZDZHUVJBZkYzTGNRYUNmMmpQMVBIVm8ydy1n
-.youtube.com	TRUE	/	TRUE	1791181295	__Secure-BUCKET	CJcF
-.youtube.com	TRUE	/	FALSE	1810702130	SID	g.a0008QhZAXHbBslmRVorZCwDd2dPZgnjvQr7isjaorMEnRfUwvKiEId9l4GawalFmlRjetPL3gACgYKASESARISFQHGX2MiruPdUS1yUFaBh4zqrIVpDBoVAUF8yKqGtNTHdgldxvpg8KjEJT1J0076
-.youtube.com	TRUE	/	TRUE	1810702130	__Secure-1PSID	g.a0008QhZAXHbBslmRVorZCwDd2dPZgnjvQr7isjaorMEnRfUwvKi5DlI_TkG-ENjeLdnLstx4gACgYKAeUSARISFQHGX2MiHGqDVlcrJo4Yf5TsudcJ5hoVAUF8yKrqJ9GXv8RnED9LBcwBOodP0076
-.youtube.com	TRUE	/	TRUE	1810702130	__Secure-3PSID	g.a0008QhZAXHbBslmRVorZCwDd2dPZgnjvQr7isjaorMEnRfUwvKijAteYFL5nCvl27XpdHOAOAACgYKAW4SARISFQHGX2Miyn1HjRWw5Z-3U0oUmKCTORoVAUF8yKr03KiHitUYNfmhpO1sH_p60076
-.youtube.com	TRUE	/	TRUE	1807843497	__Secure-1PSIDTS	sidts-CjQBWhotCQDjeLp-FBqz-_APmwXG6jgZN9rGaOdWFxpxL2BKmp3Rsd_q64k4v_4V-8RXQ0f2EAA
-.youtube.com	TRUE	/	TRUE	1807843497	__Secure-3PSIDTS	sidts-CjQBWhotCQDjeLp-FBqz-_APmwXG6jgZN9rGaOdWFxpxL2BKmp3Rsd_q64k4v_4V-8RXQ0f2EAA
-.youtube.com	TRUE	/	FALSE	1807843497	SIDCC	AKEyXzVnFfa-UutHHGcwkXKm3FTCiBCLeAnk1cQMxMmK7t66y9Z8eL3X6D1DoIeLE-N9X-A5JHuu
-.youtube.com	TRUE	/	TRUE	1807843497	__Secure-1PSIDCC	AKEyXzVPBYRArbBFfiW6_H3cQvjPfBHf6zPV9iH6jZwsVhxm_0gvZxAMRBO1Og4IdsM7pSzLBQw
-.youtube.com	TRUE	/	TRUE	1807843497	__Secure-3PSIDCC	AKEyXzVUTqNAABxBJP2u3sRcEq3I7RwWbtJ4VgkYqkFCwa6pUiCDKr7YsXwa0y_VCUZLPw2gMN6j
-.youtube.com	TRUE	/	TRUE	1791859270	VISITOR_INFO1_LIVE	rqzXJvd7FNo
-.youtube.com	TRUE	/	TRUE	1791859270	VISITOR_PRIVACY_METADATA	CgJJThIEGgAgYQ%3D%3D
-.youtube.com	TRUE	/	TRUE	0	YSC	hFFVpPJaQac
-.youtube.com	TRUE	/	TRUE	1791859189	__Secure-ROLLOUT_TOKEN	CI3Arvfiz4-_CxDqhK6N7s6KAxj5o6P4q_GTAw%3D%3D
-"""
-
-        with open(cookie_path, "w") as f:
-            if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
+        if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
+            with open(cookie_path, "w") as f:
                 f.write(yt_cookies)
-            else:
-                f.write(fallback_cookies)
-                
-        ydl_opts['cookiefile'] = cookie_path
+            ydl_opts['cookiefile'] = cookie_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(yt_url, download=False)
