@@ -152,7 +152,7 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
         # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
         # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
         ydl_opts = {
-            'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
+            'format': 'best',
             'quiet': True,
             'no_warnings': True,
             'extractor_args': {

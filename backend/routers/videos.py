@@ -90,7 +90,7 @@ def test_yt_dlp(url: str):
     stream_url = None
     try:
         ydl_opts = {
-            'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
+            'format': 'best',
             'quiet': True, 'no_warnings': True,
             'extractor_args': {
                 'youtube': {
