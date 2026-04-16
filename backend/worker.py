@@ -137,6 +137,7 @@ def process_video_task_sync(video_id: int):
     return _execute_video_pipeline(video_id)
 
 def process_youtube_video_task_sync(video_id: int, yt_url: str):
+    import os
     import yt_dlp
     db = SessionLocal()
     video = db.query(models.Video).filter(models.Video.id == video_id).first()
