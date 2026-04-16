@@ -21,14 +21,17 @@ def _execute_video_pipeline(video_id: int):
         return "Video not found"
         
     try:
+        # Use local path if provided (for YouTube videos), otherwise use the URL
+        source_path = video.local_path if hasattr(video, 'local_path') and video.local_path else video.original_url
+        
         # 1. Extract audio
-        audio_path = video_service.extract_audio(video.original_url)
+        audio_path = video_service.extract_audio(source_path)
 
         # 2. Transcribe
         transcript = ai_service.transcribe_audio(audio_path)
         
         # Get video duration for accurate clipping
-        total_duration = video_service.get_video_duration(video.original_url)
+        total_duration = video_service.get_video_duration(source_path)
 
         # 3. Detect clips
         clips_ideas = ai_service.detect_viral_segments(transcript, total_duration)
@@ -41,9 +44,15 @@ def _execute_video_pipeline(video_id: int):
 
         # 4. Generate clips sequentially to avoid race conditions with the UI
         for idea in clips_ideas:
-            generate_clip_task_sync(video_id, video.original_url, idea.model_dump())
+            generate_clip_task_sync(video_id, source_path, idea.model_dump())
             
         video.status = "completed"
+        # Cleanup local source if it was a temporary download
+        if video.local_path and os.path.exists(video.local_path) and video.local_path.startswith("/tmp/"):
+            try:
+                os.remove(video.local_path)
+            except:
+                pass
         db.commit()
         
         return f"Started processing {len(clips_ideas)} clips"
@@ -61,7 +70,7 @@ def _execute_video_pipeline(video_id: int):
     finally:
         db.close()
 
-def generate_clip_task_sync(video_id: int, original_url: str, idea_dict: dict):
+def generate_clip_task_sync(video_id: int, source_path: str, idea_dict: dict):
     db = SessionLocal()
     try:
         # Reconstruct idea from dict
@@ -82,7 +91,7 @@ def generate_clip_task_sync(video_id: int, original_url: str, idea_dict: dict):
         
         # Execute clipping with hardware acceleration
         video_service.cut_and_crop_segment(
-            original_url, 
+            source_path, 
             idea.start_time, 
             idea.end_time, 
             output_path
@@ -149,10 +158,15 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
         video.status = "downloading"
         db.commit()
 
-        # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
-        # Step 1: Get the DIRECT stream URL from YouTube (NO download, just metadata)
+        # Step 1: Download the YouTube video fully (Necessary for DASH/Shorts merging)
+        import uuid
+        download_id = str(uuid.uuid4())
+        download_path = f"/tmp/{download_id}.mp4"
+        
         ydl_opts = {
-            'format': 'best',
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': download_path,
+            'merge_output_format': 'mp4',
             'quiet': True,
             'no_warnings': True,
             'extractor_args': {
@@ -169,41 +183,28 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
         if os.path.exists(persistent_cookie_path):
             ydl_opts['cookiefile'] = persistent_cookie_path
         else:
-            # Fallback to env var if available (though formatting breaks often)
+            # Fallback to env var if available
             yt_cookies = os.getenv("YOUTUBE_COOKIES")
             if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
-                temp_cookie_path = "/tmp/youtube_cookies.txt"
+                temp_cookie_path = f"/tmp/cookies_{download_id}.txt"
                 with open(temp_cookie_path, "w") as f:
                     f.write(yt_cookies)
                 ydl_opts['cookiefile'] = temp_cookie_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(yt_url, download=False)
-        
-        # Find a single-file stream URL (video+audio combined) to avoid costly merging
-        stream_url = None
-        formats = info.get('formats', [])
-        
-        # Prefer combined mp4 format (no merging needed)
-        for fmt in reversed(formats):
-            if (fmt.get('ext') == 'mp4' and 
-                fmt.get('vcodec', 'none') != 'none' and 
-                fmt.get('acodec', 'none') != 'none' and
-                fmt.get('height', 0) and fmt.get('height', 0) <= 720):
-                stream_url = fmt.get('url')
-                break
-        
-        # Fallback: use any available URL
-        if not stream_url:
-            stream_url = info.get('url')
-        if not stream_url and formats:
-            stream_url = formats[-1].get('url')
+            info = ydl.extract_info(yt_url, download=True)
             
-        if not stream_url:
-            raise Exception("Could not get stream URL from YouTube")
+        # Ensure the file exists (yt-dlp may add extension in some cases)
+        if not os.path.exists(download_path):
+            import glob
+            possible_files = glob.glob(f"/tmp/{download_id}.*")
+            if possible_files:
+                download_path = possible_files[0]
+            else:
+                raise Exception("Failed to download YouTube video (file not found)")
         
-        # Store the direct CDN URL — ffmpeg can stream from URLs directly
-        video.original_url = stream_url
+        # Record the local path so processing can use it
+        video.local_path = download_path
         video.status = "processing"
         db.commit()
 

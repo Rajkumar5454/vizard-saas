@@ -86,11 +86,14 @@ def test_yt_dlp(url: str):
     except Exception as e:
         results["ffmpeg"] = f"MISSING: {e}"
     
-    # Test 2: Try yt-dlp extract_info (no download) and get stream URL
-    stream_url = None
+    # Test 2: Try full yt-dlp download to verify DASH merging
+    download_id = str(uuid.uuid4())
+    download_path = f"/tmp/test_{download_id}.mp4"
     try:
         ydl_opts = {
-            'format': 'best',
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': download_path,
+            'merge_output_format': 'mp4',
             'quiet': True, 'no_warnings': True,
             'extractor_args': {
                 'youtube': {
@@ -101,52 +104,36 @@ def test_yt_dlp(url: str):
             'nocheckcertificate': True,
         }
         
-        # Support cookies in debug test as well
+        # Support cookies in debug test
         persistent_cookie_path = "youtube_cookies.txt"
         if os.path.exists(persistent_cookie_path):
             ydl_opts['cookiefile'] = persistent_cookie_path
+            results["cookies_found"] = "YES (Persistent)"
         else:
-            cookie_path = "/tmp/youtube_cookies_test.txt"
+            cookie_path = f"/tmp/cookies_test_{download_id}.txt"
             yt_cookies = os.getenv("YOUTUBE_COOKIES")
             if yt_cookies and "# Netscape HTTP Cookie File" in yt_cookies:
                 with open(cookie_path, "w") as f:
                     f.write(yt_cookies)
                 ydl_opts['cookiefile'] = cookie_path
+                results["cookies_found"] = "YES (Env Var)"
+            else:
+                results["cookies_found"] = "NO"
             
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-        
-        formats = info.get('formats', [])
-        for fmt in reversed(formats):
-            if (fmt.get('ext') == 'mp4' and 
-                fmt.get('vcodec', 'none') != 'none' and 
-                fmt.get('acodec', 'none') != 'none' and
-                fmt.get('height', 0) and fmt.get('height', 0) <= 720):
-                stream_url = fmt.get('url')
-                break
-        if not stream_url:
-            stream_url = info.get('url') or (formats[-1].get('url') if formats else None)
-        
-        results["yt_dlp"] = f"OK: Found video '{info.get('title')}' duration={info.get('duration')}s stream_url={'found' if stream_url else 'NOT FOUND'}"
+            info = ydl.extract_info(url, download=True)
+            results["yt_dlp"] = f"OK: Downloaded {info.get('title')[:30]}..."
+            results["local_file_exists"] = os.path.exists(download_path)
+            if os.path.exists(download_path):
+                results["file_size_mb"] = os.path.getsize(download_path) / (1024*1024)
+                os.remove(download_path) # Cleanup
+                
     except Exception as e:
-        results["yt_dlp"] = f"FAILED: {traceback.format_exc()}"
-    
-    # Test 3: Try extracting audio from stream URL
-    audio_path = None
-    if stream_url:
-        try:
-            audio_path = video_service.extract_audio(stream_url)
-            results["audio_extract"] = f"OK: audio saved to {audio_path}"
-        except Exception as e:
-            results["audio_extract"] = f"FAILED: {str(e)}"
-    else:
-        results["audio_extract"] = "SKIPPED: no stream URL"
+        results["yt_dlp"] = f"FAILED: {e}"
+        if os.path.exists(download_path):
+             os.remove(download_path)
     
     # Test 4: Try Groq transcription
-    if audio_path:
-        try:
-            from services import ai_service
-            transcript = ai_service.transcribe_audio(audio_path)
             if transcript:
                 results["groq_transcribe"] = f"OK: Got {len(transcript)} chars of transcript"
             else:
