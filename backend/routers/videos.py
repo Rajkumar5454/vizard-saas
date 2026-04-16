@@ -94,8 +94,8 @@ def test_yt_dlp(url: str):
             'quiet': True, 'no_warnings': True,
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['web_embedded', 'android', 'ios'],
-                    'player_skip': ['web']
+                    'player_client': ['tvhtml5', 'android', 'ios'],
+                    'player_skip': ['web', 'web_embedded']
                 }
             },
             'nocheckcertificate': True,
