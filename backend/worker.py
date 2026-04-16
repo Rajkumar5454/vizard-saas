@@ -155,7 +155,7 @@ def process_youtube_video_task_sync(video_id: int, yt_url: str):
             'format': 'best',
             'quiet': True,
             'no_warnings': True,
-            'impersonate': 'chrome110',
+            'impersonate': 'chrome',
             'extractor_args': {
                 'youtube': {
                     'player_client': ['tvhtml5', 'android', 'ios'],

@@ -92,7 +92,7 @@ def test_yt_dlp(url: str):
         ydl_opts = {
             'format': 'best',
             'quiet': True, 'no_warnings': True,
-            'impersonate': 'chrome110',
+            'impersonate': 'chrome',
             'extractor_args': {
                 'youtube': {
                     'player_client': ['tvhtml5', 'android', 'ios'],
