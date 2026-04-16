@@ -133,16 +133,6 @@ def test_yt_dlp(url: str):
         if os.path.exists(download_path):
              os.remove(download_path)
     
-    # Test 4: Try Groq transcription
-            if transcript:
-                results["groq_transcribe"] = f"OK: Got {len(transcript)} chars of transcript"
-            else:
-                results["groq_transcribe"] = "FAILED: Empty transcript returned (Groq API key may be wrong or audio silent)"
-        except Exception as e:
-            results["groq_transcribe"] = f"FAILED: {str(e)}"
-    else:
-        results["groq_transcribe"] = "SKIPPED: no audio"
-    
     return results
 
 @router.get("/{video_id}", response_model=schemas.VideoResponse)
